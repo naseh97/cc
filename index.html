@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>چاودێری خاڵەکانی کۆنکان (تاریکتر)</title>
+   
+   <script src="https://cdn.tailwindcss.com"></script>
+   
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+   <style>
+       /* --- HIGH PROFESSIONAL DARK PALETTE (Slate & Blue - Darker) --- */
+       :root {
+           --bg-color: #0c121e;       /* Even darker Slate-950 */
+           --panel-bg: #151e2a;       /* Darker Slate-900 */
+           --accent-color: #4a90e2;   /* Slightly brighter blue for accent */
+           --accent-dark: #3a7bd5;    /* Darker hover for accent */
+           --secondary-accent: #5bc0de; /* Brighter Sky Blue for scores/leader */
+           --text-color: #e0e6ed;     /* Lighter text for contrast */
+           --text-muted: #8493a5;     /* Muted text (used for input text/placeholder as requested) */
+           --error-color: #e76f51;    /* Slightly softer red */
+           --border-color: #2b3a4d;   /* Darker border color */
+           --highlight-bg: #1c2a38;   /* Darker highlight for leader row */
+       }
+       body {
+           font-family: 'Inter', Tahoma, Arial, "Times New Roman", sans-serif;
+           background-color: var(--bg-color);
+           color: var(--text-color);
+           min-height: 100vh;
+       }
+
+       .dashboard-container {
+           max-width: 1200px;
+           margin: 20px auto;
+           padding: 1.5rem;
+       }
+       
+       /* Main Panel Styling */
+       .panel {
+           background-color: var(--panel-bg);
+           border-radius: 0.75rem;
+           box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1); /* Stronger shadow */
+           border: 1px solid var(--border-color);
+           padding: 1.5rem;
+       }
+       
+       /* --- Input Styling (Text color changed to muted/darker) --- */
+       .app-input {
+           appearance: none;
+           -moz-appearance: textfield;
+           background-color: var(--bg-color); /* Use main bg color for inputs */
+           color: var(--text-muted); /* Changed to text-muted for a "darker" look as requested */
+           border: 1px solid var(--border-color);
+           padding: 0.75rem 1rem;
+           border-radius: 0.5rem;
+           transition: border-color 0.2s, box-shadow 0.2s;
+           text-align: right;
+       }
+       
+       .app-input:focus {
+           outline: none;
+           border-color: var(--accent-color);
+           box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.5); /* Matching focus ring */
+           color: var(--text-color); /* Make active text brighter when focused */
+       }
+
+       .app-input::placeholder {
+           color: var(--text-muted);
+           opacity: 1;
+       }
+
+       .app-input::-webkit-outer-spin-button,
+       .app-input::-webkit-inner-spin-button {
+           -webkit-appearance: none;
+           margin: 0;
+       }
+       
+       /* --- PRIMARY BUTTON STYLING (Solid, No Glow) --- */
+       .btn-utility {
+           padding: 0.75rem 1.5rem;
+           border-radius: 0.5rem;
+           font-weight: 700;
+           transition: background-color 0.2s, transform 0.1s;
+           cursor: pointer;
+           border: none;
+           background-color: var(--accent-color);
+           color: white;
+           box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+       }
+       
+       .btn-utility:hover:not(:disabled) {
+           background-color: var(--accent-dark);
+       }
+       .btn-utility:active:not(:disabled) {
+           transform: translateY(1px);
+       }
+       .btn-utility:disabled {
+           opacity: 0.4;
+           cursor: not-allowed;
+           box-shadow: none;
+       }
+
+       /* Leader Style for Table - Uses clean Sky Blue */
+       .leader-row {
+           border-right: 4px solid var(--secondary-accent);
+           background-color: var(--highlight-bg);
+       }
+       
+       .score-display {
+           color: var(--secondary-accent);
+       }
+
+       .delete-btn {
+           @apply text-error-color hover:text-red-400 transition disabled:opacity-30; /* Adjusted hover color */
+       }
+       
+       /* Style for secondary/undo buttons */
+       .btn-secondary {
+           @apply flex-grow flex items-center justify-center p-2 rounded-md font-medium transition;
+           background-color: #2b3a4d; /* Darker Slate-700 */
+           color: var(--text-color);
+           border: 1px solid #3c4e61; /* Darker Slate-600 */
+       }
+       .btn-secondary:hover:not(:disabled) {
+           background-color: #3c4e61;
+           border-color: var(--accent-color);
+       }
+
+       /* Enforce dark backgrounds on all default Tailwind classes used for internal blocks */
+       .bg-gray-50 {
+           background-color: var(--bg-color);
+       }
+       .bg-gray-100 {
+           background-color: var(--panel-bg);
+       }
+       .border-gray-200 {
+           border-color: var(--border-color);
+       }
+       
+       /* Modal Style Override */
+       #modal-content {
+           background-color: var(--panel-bg);
+           border: 1px solid var(--border-color);
+       }
+
+       /* Specific style for table header cells for RTL */
+       .score-table-header-left {
+           text-align: left;
+           border-top-left-radius: 0.25rem; /* rounded-tl-sm */
+           border-top-right-radius: 0;
+       }
+       .score-table-header-right {
+           text-align: right;
+           border-top-right-radius: 0.25rem; /* rounded-tr-sm */
+           border-top-left-radius: 0;
+       }
+   </style>
+</head>
+<body>
+
+   <div id="app" class="dashboard-container">
+       <header class="mb-8 text-center sm:text-right">
+           <h1 class="text-4xl font-extrabold tracking-tight text-accent-color">
+               چاودێری خاڵەکانی کۆنکان
+           </h1>
+           <p class="text-lg text-text-muted mt-1 font-medium">بەڕێوەبردنی خاڵی پیشەیی</p>
+       </header>
+
+       
+       <div id="setup-panel" class="mb-8 panel">
+           <h2 class="text-xl font-semibold mb-4 text-text-color border-b border-gray-200 pb-2">١. تۆمارکردنی یاریزانەکان</h2>
+
+           <div class="flex flex-col sm:flex-row gap-3 mb-4">
+               <input type="text" id="team-name-input" placeholder="ناوی یاریزان / نازناو بنووسە"
+                      class="flex-grow p-3 rounded-lg app-input"
+                      maxlength="20">
+               <button id="add-team-btn" class="btn-utility w-full sm:w-auto mt-2 sm:mt-0" onclick="addTeam()">
+                   <span class="px-2">زیادکردنی یاریزان</span>
+               </button>
+           </div>
+
+           <div id="team-list" class="space-y-2 mt-4 max-h-48 overflow-y-auto p-3 rounded-lg border border-gray-200 bg-gray-50">
+               
+           </div>
+
+           <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-200">
+               <p class="text-sm text-text-muted">یاریزانە چالاکەکان:</p>
+               <span id="team-count" class="font-extrabold text-lg score-display">0</span>
+           </div>
+
+           <button id="start-game-btn" class="btn-utility w-full mt-6"
+                   onclick="startGame()">
+               لانیکەم ٢ یاریزان زیاد بکە بۆ دەستپێکردن
+           </button>
+       </div>
+
+       
+       <div id="scoreboard-panel" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+           
+           <div class="lg:col-span-2 panel">
+               <h2 class="text-xl font-semibold mb-4 text-text-color flex justify-between items-center border-b border-gray-200 pb-2">
+                   <span class="ml-3">ڕیزبەندی گشتی</span>
+                   <div class="flex gap-3 text-sm">
+                       <button id="show-diff-btn" class="font-medium score-display hover:underline" onclick="showDifferenceModal()">
+                           [بینینی شیکاری]
+                       </button>
+                       <button class="font-medium text-error-color hover:underline" onclick="requestRestartGame()">
+                           [دەستپێکردنەوە]
+                       </button>
+                   </div>
+               </h2>
+               
+               
+               <div class="overflow-x-auto">
+                   <table class="min-w-full">
+                       <thead class="bg-gray-100 border-b border-gray-200">
+                           <tr>
+                               <th class="p-3 score-table-header-right text-xs font-bold text-text-muted uppercase tracking-wider min-w-[150px] sm:min-w-[200px]">یاریزان / تيم</th>
+                               <th class="p-3 score-table-header-left text-xs font-bold text-text-muted uppercase tracking-wider">کۆی خاڵەکان (خاڵ)</th>
+                           </tr>
+                       </thead>
+                       <tbody id="score-table-body" class="divide-y divide-gray-200">
+                           
+                       </tbody>
+                   </table>
+               </div>
+           </div>
+
+           
+           <div class="lg:col-span-1 panel">
+               <h2 class="text-xl font-semibold mb-4 text-text-color flex justify-between items-center border-b border-gray-200 pb-2">
+                   <span>تۆمارکردنی گەڕ</span>
+                   <span class="text-2xl font-extrabold score-display">گ<span id="round-number">0</span></span>
+               </h2>
+               
+               
+               <p class="text-sm text-text-muted mb-4">خاڵەکانی ئەم گەڕە بنووسە (0 بۆ براوە).</p>
+               <div id="round-inputs" class="space-y-3">
+                   
+               </div>
+               
+               
+               <button id="submit-round-btn" class="btn-utility w-full mt-6" onclick="submitRound()">
+                   پشتڕاستکردنەوەی خاڵەکانی گەڕ
+               </button>
+               
+               
+               <div class="flex gap-3 mt-4 border-t border-gray-200 pt-4">
+                   <button id="undo-btn" class="btn-secondary" onclick="undoScore()" title="پاشگەزبوونەوە لە دوایین گەڕ" disabled>
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 transform rotate-180" viewBox="0 0 20 20" fill="currentColor">
+                         <path fill-rule="evenodd" d="M11.757 7.757a1 1 0 00-1.414 0L7.586 10.5H16a1 1 0 110 2H7.586l2.757 2.757a1 1 0 11-1.414 1.414l-4.5-4.5a1 1 0 010-1.414l4.5-4.5a1 1 0 011.414 0z" clip-rule="evenodd" />
+                       </svg>
+                       پاشگەزبوونەوە
+                   </button>
+                   <button id="redo-btn" class="btn-secondary" onclick="redoScore()" title="دووبارەکردنەوەی پاشگەزبوونەوە" disabled>
+                       دووبارەکردنەوە
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 transform rotate-180" viewBox="0 0 20 20" fill="currentColor">
+                         <path fill-rule="evenodd" d="M8.243 7.757a1 1 0 011.414 0l4.5 4.5a1 1 0 010 1.414l-4.5 4.5a1 1 0 01-1.414-1.414L10.414 13H4a1 1 0 110-2h6.414L8.243 8.243a1 1 0 010-1.414z" clip-rule="evenodd" />
+                       </svg>
+                   </button>
+               </div>
+           </div>
+       </div>
+
+       
+       <div id="round-history-panel" class="hidden mt-6 panel">
+            <h2 class="text-xl font-semibold mb-4 text-text-color border-b border-gray-200 pb-2">تۆماری چاودێری دانیشتن</h2>
+            <div id="round-history-content" class="space-y-4 max-h-[400px] overflow-y-auto">
+               <p class="text-text-muted italic text-center py-4">تا ئێستا هیچ گەڕێک تۆمار نەکراوە.</p>
+            </div>
+       </div>
+   </div>
+
+   
+   <div id="modal-backdrop" class="fixed inset-0 bg-gray-900 bg-opacity-70 hidden items-center justify-center p-4 z-50 transition-opacity duration-300">
+       <div id="modal-content" class="p-6 rounded-xl shadow-2xl max-w-sm w-full transform transition-transform duration-300">
+           <h3 id="modal-title" class="text-2xl font-bold mb-4 text-accent-color text-right">پەیام</h3>
+           <div id="modal-body" class="text-text-color space-y-3 text-right">
+               
+           </div>
+           <div id="modal-actions" class="flex justify-start gap-3 mt-6">
+               
+           </div>
+       </div>
+   </div>
+
+   <script>
+       // Global state
+       let teams = [];
+       let scoreHistory = [];
+       let historyIndex = 0;
+       let isGameStarted = false;
+
+       // --- Modal/Message Functions (Now handles confirmation) ---
+       
+       /** Executes the confirmation callback stored on the modal actions element. */
+       function executeModalConfirm() {
+           const modalActions = document.getElementById('modal-actions');
+           if (modalActions.confirmCallback && typeof modalActions.confirmCallback === 'function') {
+               modalActions.confirmCallback(); // Execute the stored function
+               closeModal(); // Close the modal after execution
+           } else {
+               closeModal();
+           }
+       }
+
+       /** Shows a modal with a message or confirmation prompt. */
+       function showMessage(title, message, confirmCallback = null) {
+           const modalTitle = document.getElementById('modal-title');
+           const modalBody = document.getElementById('modal-body');
+           const modalActions = document.getElementById('modal-actions');
+           
+           modalTitle.textContent = title;
+           modalBody.innerHTML = message;
+           modalActions.innerHTML = ''; // Clear previous buttons
+
+           if (confirmCallback) {
+               // Store the callback function
+               modalActions.confirmCallback = confirmCallback;
+               
+               modalActions.innerHTML = `
+                   <button class="p-2 px-4 rounded-md font-medium btn-secondary" onclick="closeModal()">هەڵوەشاندنەوە</button>
+                   <button class="btn-utility" onclick="executeModalConfirm()">پشتڕاستکردنەوە</button>
+               `;
+
+           } else {
+               modalActions.innerHTML = `
+                   <button class="btn-utility w-full" onclick="closeModal()">داخستن</button>
+               `;
+           }
+           // Ensure modal content is correctly aligned for RTL
+           modalTitle.classList.remove('text-left');
+           modalBody.classList.remove('text-left');
+           
+           document.getElementById('modal-backdrop').classList.remove('hidden');
+           document.getElementById('modal-backdrop').classList.add('flex');
+       }
+
+       function closeModal() {
+           document.getElementById('modal-backdrop').classList.add('hidden');
+           document.getElementById('modal-backdrop').classList.remove('flex');
+           const modalActions = document.getElementById('modal-actions');
+           delete modalActions.confirmCallback;
+       }
+
+       // --- State Management & Recalculation ---
+
+       /** Renders all UI elements based on the current state. */
+       function renderAll() {
+           updateButtonStates();
+           updateRoundDisplay();
+           renderScoreboard();
+           renderRoundInputs();
+           renderRoundHistory();
+       }
+
+       /** Updates the round number displayed. */
+       function updateRoundDisplay() {
+           // Changed from toLocaleString('ar-EG') to toString() for Western numerals
+           document.getElementById('round-number').textContent = historyIndex.toString();
+       }
+
+       /** Updates the enabled/disabled state of control buttons. */
+       function updateButtonStates() {
+           const startBtn = document.getElementById('start-game-btn');
+           const undoBtn = document.getElementById('undo-btn');
+           const redoBtn = document.getElementById('redo-btn');
+
+           if (!isGameStarted) {
+               startBtn.disabled = teams.length < 2;
+               startBtn.textContent = teams.length < 2 ? 'لانیکەم ٢ یاریزان زیاد بکە بۆ دەستپێکردن' : 'دەستپێکردنی چاودێری خاڵ';
+           }
+           
+           if (isGameStarted) {
+               undoBtn.disabled = historyIndex <= 0;
+               redoBtn.disabled = historyIndex >= scoreHistory.length - 1;
+           }
+       }
+       
+       /** Renders the list of teams in the setup panel. */
+       function updateTeamDisplay() {
+           const list = document.getElementById('team-list');
+           const countDisplay = document.getElementById('team-count');
+
+           // Changed from toLocaleString('ar-EG') to toString() for Western numerals
+           countDisplay.textContent = teams.length.toString();
+           list.innerHTML = '';
+
+           if (teams.length === 0) {
+               list.innerHTML = '<p class="text-text-muted italic text-center py-4">ناوی بەشداربووانی دانیشتنەکە لێرە زیاد بکە.</p>';
+           } else {
+               teams.forEach((team, index) => {
+                   const teamDiv = document.createElement('div');
+                   teamDiv.className = 'flex justify-between items-center p-2 rounded-md transition bg-gray-50 hover:bg-slate-700';
+                   teamDiv.innerHTML = `
+                       <span class="font-medium text-text-color truncate">${team.name}</span>
+                       <button onclick="removeTeam(${index})" class="delete-btn p-1 rounded-full bg-transparent" aria-label="لابردنی ${team.name}">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                           </svg>
+                       </button>
+                   `;
+                   list.appendChild(teamDiv);
+               });
+           }
+           updateButtonStates();
+       }
+
+       /** Renders the main score table, sorted by score (lowest first). */
+       function renderScoreboard() {
+           const tableBody = document.getElementById('score-table-body');
+           tableBody.innerHTML = '';
+
+           const currentTotalState = historyIndex >= 0 ? scoreHistory[historyIndex].totalScores : [];
+           const sortedTeams = [...currentTotalState].sort((a, b) => a.score - b.score);
+
+           sortedTeams.forEach((team, index) => {
+               const isLeader = index === 0 && (sortedTeams.length === 1 || team.score < sortedTeams[1].score);
+               const row = document.createElement('tr');
+               
+               row.className = `transition duration-100 ${isLeader ? 'leader-row' : 'hover:bg-slate-700'}`;
+               
+               const scoreClass = isLeader ? 'score-display font-extrabold text-2xl' : 'text-text-color font-bold text-xl';
+               const rankBadge = isLeader ? '<span class="text-xs text-white bg-secondary-accent px-2 py-0.5 rounded-full font-bold tracking-wider mr-3">پێشڕەو</span>' : '';
+               
+               row.innerHTML = `
+                   <td class="p-3 text-right text-text-color flex items-center justify-end gap-2">${rankBadge} ${team.name}</td>
+                   <td class="p-3 text-left ${scoreClass}">${team.score.toString()}</td>
+               `; // Changed to toString()
+               tableBody.appendChild(row);
+           });
+       }
+       
+       /** Renders the input fields for the current round's scores. */
+       function renderRoundInputs() {
+           const inputsContainer = document.getElementById('round-inputs');
+           inputsContainer.innerHTML = '';
+
+           teams.forEach(team => {
+               const inputGroup = document.createElement('div');
+               inputGroup.className = 'col-span-1';
+               inputGroup.innerHTML = `
+                   <label for="round-score-${team.name.replace(/\s/g, '-')}" class="block text-sm font-semibold text-text-color truncate mb-1 text-right">${team.name}</label>
+                   <input type="number" id="round-score-${team.name.replace(/\s/g, '-')}"
+                          placeholder="0" min="0"
+                          class="score-input p-3 w-full app-input text-left">
+               `;
+               inputsContainer.appendChild(inputGroup);
+           });
+       }
+       
+       /** Renders the detailed audit log of all completed rounds. */
+       function renderRoundHistory() {
+           const historyContainer = document.getElementById('round-history-content');
+           
+           const rounds = scoreHistory.slice(1);
+           historyContainer.innerHTML = '';
+
+           if (rounds.length === 0) {
+               historyContainer.innerHTML = '<p class="text-text-muted italic text-center py-4">تا ئێستا هیچ گەڕێک تۆمار نەکراوە.</p>';
+               document.getElementById('round-history-panel').classList.add('hidden');
+               return;
+           }
+
+           document.getElementById('round-history-panel').classList.remove('hidden');
+
+           rounds.reverse().forEach((round, index) => {
+               const actualIndex = scoreHistory.length - 1 - index;
+
+               const winner = round.roundScores.find(s => s.score === 0);
+               const winnerName = winner ? winner.name : 'کەس نەبوو';
+               
+               const scoreList = round.roundScores.map(s =>
+                   // Changed to toString()
+                   `<span class="text-sm font-mono">${s.name}: <span class="font-bold ${s.score === 0 ? 'text-green-400' : 'text-yellow-400'}">${s.score.toString()}</span></span>`
+               ).join('، ');
+
+               const roundDiv = document.createElement('div');
+               roundDiv.className = `p-4 border rounded-lg bg-gray-50 transition hover:bg-slate-700 ${actualIndex === historyIndex ? 'border-2 border-accent-color' : 'border-gray-200'}`;
+               roundDiv.innerHTML = `
+                   <div class="flex justify-between items-start border-b border-gray-200 pb-2 mb-2">
+                       <h4 class="font-extrabold text-lg score-display">گەڕ ${round.roundId.toString()}</h4>
+                       <button class="delete-btn" title="سڕینەوەی گەڕ ${round.roundId.toString()}" onclick="requestDeleteRound(${actualIndex})" ${actualIndex > historyIndex ? 'disabled' : ''}>
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                           </svg>
+                       </button>
+                   </div>
+                   <p class="text-sm text-text-color mb-2 text-right">
+                       <span class="font-semibold text-text-muted">براوەی گەڕ:</span> ${winnerName}
+                   </p>
+                   <div class="flex flex-wrap gap-2 text-sm text-text-color justify-end">
+                       ${scoreList}
+                   </div>
+               `;
+               historyContainer.appendChild(roundDiv);
+           });
+       }
+
+       // --- Team & Game Setup Functions ---
+       
+       function addTeam() {
+           const input = document.getElementById('team-name-input');
+           const name = input.value.trim();
+
+           if (name === '') {
+               showMessage('داواکاریی نووسین', 'تکایە ناوی یاریزان یان تیمی دروست بنووسە.');
+               return;
+           }
+           if (teams.some(team => team.name.toLowerCase() === name.toLowerCase())) {
+               showMessage('ناکۆکی لە ناوەکان', 'ئەم ناوەی یاریزان پێشتر بەکارهاتووە.');
+               return;
+           }
+           
+           teams.push({ name: name, score: 0 });
+           input.value = '';
+           updateTeamDisplay();
+       }
+
+       function removeTeam(index) {
+           if (isGameStarted) {
+               showMessage('یارییەکە لە پرۆسەدایە', 'بۆ لابردنی یاریزان، تکایە دانیشتنەکە لە سەرەتاوە دەستپێبکەوە.');
+               return;
+           }
+           teams.splice(index, 1);
+           updateTeamDisplay();
+       }
+
+       function startGame() {
+           if (teams.length < 2) {
+               showMessage('پێویستیی ڕێکخستن', 'لانیکەم ٢ یاریزان پێویستە بۆ دەستپێکردنی چاودێری خاڵ.');
+               return;
+           }
+
+           isGameStarted = true;
+           document.getElementById('setup-panel').classList.add('hidden');
+           document.getElementById('scoreboard-panel').classList.remove('hidden');
+
+           scoreHistory = [{
+               roundId: 0,
+               totalScores: teams.map(t => ({ name: t.name, score: 0 })),
+               roundScores: []
+           }];
+           historyIndex = 0;
+
+           renderAll();
+       }
+
+       /** Prompts user to confirm resetting the entire application state. */
+       function requestRestartGame() {
+           const message = `
+               <p>دڵنیای کە دەتەوێت **لە سەرەتاوە دەستپێبکەیتەوە**؟</p>
+               <p class="font-bold text-error-color mt-2">ئەم کردارە ناتوانرێت هەڵبوەشێنرێتەوە و کۆی خاڵ و مێژووەکە دەسڕێتەوە.</p>
+           `;
+           
+           showMessage('پشتڕاستکردنەوەی دەستپێکردنەوە', message, () => {
+               teams = [];
+               scoreHistory = [];
+               historyIndex = 0;
+               isGameStarted = false;
+               
+               document.getElementById('scoreboard-panel').classList.add('hidden');
+               document.getElementById('setup-panel').classList.remove('hidden');
+               
+               updateTeamDisplay();
+               updateButtonStates();
+               renderRoundHistory();
+           });
+       }
+
+       // --- Scoring and History Functions ---
+
+       /** Calculates and adds the current round scores to the total score. */
+       function submitRound() {
+           let roundScores = [];
+           let inputError = false;
+           let inputsAreEmpty = true;
+           
+           teams.forEach(team => {
+               const inputId = `round-score-${team.name.replace(/\s/g, '-')}`;
+               const inputElement = document.getElementById(inputId);
+               
+               let score = parseInt(inputElement.value || '0', 10);
+
+               if (inputElement.value !== '') {
+                   inputsAreEmpty = false;
+               }
+
+               if (isNaN(score) || score < 0) {
+                   inputError = true;
+                   return;
+               }
+               
+               roundScores.push({ name: team.name, score: score });
+           });
+
+           if (inputError) {
+               showMessage('هەڵەی ڕاستکردنەوە', 'پێویستە هەموو خاڵەکانی گەڕ ژمارەی دروست و نەرێنی نەبن.');
+               return;
+           }
+           
+           if (inputsAreEmpty) {
+                showMessage('کەم نووسین', 'تکایە خاڵی لانیکەم یەک یاریزان بنووسە لەم گەڕەدا.');
+                return;
+           }
+
+           const previousTotalState = scoreHistory[historyIndex].totalScores;
+
+           let newTotalScores = previousTotalState.map(team => {
+               const round = roundScores.find(r => r.name === team.name);
+               return {
+                   name: team.name,
+                   score: team.score + (round ? round.score : 0)
+               };
+           });
+           
+           if (historyIndex < scoreHistory.length - 1) {
+               scoreHistory = scoreHistory.slice(0, historyIndex + 1);
+           }
+
+           const newRoundId = scoreHistory.length;
+           scoreHistory.push({
+               roundId: newRoundId,
+               totalScores: newTotalScores,
+               roundScores: roundScores
+           });
+           historyIndex = scoreHistory.length - 1;
+
+           renderAll();
+           
+           teams.forEach(team => {
+               document.getElementById(`round-score-${team.name.replace(/\s/g, '-')}`).value = '';
+           });
+       }
+
+       /** Reverts the score to the previous round's state. */
+       function undoScore() {
+           if (historyIndex > 0) {
+               historyIndex--;
+               renderAll();
+               showMessage('کردار هەڵوەشێنرایەوە', `خاڵەکان گەڕێنرایەوە بۆ گەڕی ${historyIndex.toString()}.`); // Changed to toString()
+           }
+       }
+
+       /** Re-applies the score from a previously undone round. */
+       function redoScore() {
+           if (historyIndex < scoreHistory.length - 1) {
+               historyIndex++;
+               renderAll();
+               showMessage('کردار دووبارە کرایەوە', `خاڵەکان پێشخرا بۆ گەڕی ${historyIndex.toString()}.`); // Changed to toString()
+           }
+       }
+       
+       /** Prompts user to confirm deletion of a specific round. */
+       function requestDeleteRound(index) {
+           const roundId = scoreHistory[index].roundId.toString(); // Changed to toString()
+           const message = `
+               <p>دڵنیای کە دەتەوێت **گەڕی ${roundId}** بسڕیتەوە؟</p>
+               <p class="font-bold text-error-color mt-2">هەموو خاڵەکانی دواتر بە شێوەیەکی خۆکارانە دووبارە دەژمێردرێنەوە.</p>
+           `;
+           showMessage(`پشتڕاستکردنەوەی سڕینەوەی گەڕی ${roundId}`, message, () => deleteRound(index));
+       }
+
+       /** Deletes a round and recalculates all subsequent totals. */
+       function deleteRound(index) {
+           if (index <= 0 || index >= scoreHistory.length) return;
+
+           const deletedRound = scoreHistory.splice(index, 1)[0];
+
+           let newHistory = [scoreHistory[0]];
+
+           for (let i = 1; i < scoreHistory.length; i++) {
+               const roundEntry = scoreHistory[i];
+               const previousTotalState = newHistory[newHistory.length - 1].totalScores;
+
+               let newTotalScores = previousTotalState.map(team => {
+                   const roundScore = roundEntry.roundScores.find(rs => rs.name === team.name);
+                   return {
+                       name: team.name,
+                       score: team.score + (roundScore ? roundScore.score : 0)
+                   };
+               });
+               
+               newHistory.push({
+                   roundId: i,
+                   totalScores: newTotalScores,
+                   roundScores: roundEntry.roundScores
+               });
+           }
+
+           scoreHistory = newHistory;
+           historyIndex = scoreHistory.length - 1;
+
+           renderAll();
+           showMessage('گەڕ سڕدرایەوە', `گەڕی ${deletedRound.roundId.toString()} سڕدرایەوە و خاڵەکان بە سەرکەوتوویی دووبارە ژمێردرایەوە.`); // Changed to toString()
+       }
+
+       // --- Analysis Function ---
+
+       /** Generates HTML content for the score difference modal. */
+       function calculateDifferences() {
+           const currentTotalState = historyIndex >= 0 ? scoreHistory[historyIndex].totalScores : [];
+
+           if (currentTotalState.length < 2) {
+               return '<p class="text-center text-text-muted">شیکاری لانیکەم دوو یاریزانی پێویستە.</p>';
+           }
+
+           const sortedTeams = [...currentTotalState].sort((a, b) => a.score - b.score);
+           
+           let html = `<ul class="divide-y ${'divide-gray-700'}">`;
+
+           // 1. Leaderboard Ranking
+           let rankingHtml = '<p class="font-bold text-lg score-display mt-2 mb-2 border-b border-gray-700 pb-2">ڕیزبەندی ئێستا:</p>';
+           sortedTeams.forEach((team, index) => {
+               const isLeader = index === 0;
+               const rankColor = isLeader ? 'text-secondary-accent' : 'text-text-color';
+               rankingHtml += `<li class="py-2 flex justify-between items-center text-right">
+                   <span class="font-bold text-lg score-display">${team.score.toString()} خاڵ</span>
+                   <span class="flex-grow font-medium text-text-color text-right">${team.name}</span>
+                   <span class="font-extrabold text-xl w-8 text-center ${rankColor}">#${(index + 1).toString()}</span>
+               </li>`; // Changed to toString()
+           });
+           html += rankingHtml;
+
+           // 2. Difference from Leader
+           const leaderScore = sortedTeams[0].score;
+           let leaderDifferences = '<p class="font-bold text-md text-text-color mt-4 mb-2 border-t border-gray-700 pt-3">جیاوازیی خاڵ لە پێشڕەو:</p>';
+           
+           let foundDifference = false;
+           sortedTeams.slice(1).forEach((team) => {
+               const difference = team.score - leaderScore;
+               if (difference > 0) {
+                   foundDifference = true;
+                   leaderDifferences += `<li class="py-1.5 flex justify-between text-sm text-right">
+                       <span class="font-bold text-accent-color">${difference.toString()} خاڵ</span>
+                       <span>کورتهێنانی ${team.name}:</span>
+                   </li>`; // Changed to toString()
+               }
+           });
+           
+           if (!foundDifference) {
+                leaderDifferences += `<li class="py-1.5 text-sm text-center text-text-muted italic">هەموو یاریزانە چالاکەکان ئێستا بە ${leaderScore.toString()} خاڵ یەکسانن.</li>`; // Changed to toString()
+           }
+
+           html += leaderDifferences;
+           
+           html += '</ul>';
+           return html;
+       }
+
+       /** Displays the analysis modal. */
+       function showDifferenceModal() {
+           document.getElementById('modal-title').textContent = 'شیکاری و ڕیزبەندی دانیشتن';
+           document.getElementById('modal-title').classList.add('text-secondary-accent');
+           document.getElementById('modal-title').classList.remove('text-accent-color');
+
+
+           document.getElementById('modal-body').innerHTML = calculateDifferences();
+           document.getElementById('modal-actions').innerHTML = `<button class="btn-utility w-full" onclick="closeModal()">داخستن</button>`;
+           document.getElementById('modal-backdrop').classList.remove('hidden');
+           document.getElementById('modal-backdrop').classList.add('flex');
+       }
+
+
+       // Initialize application on load
+       document.addEventListener('DOMContentLoaded', () => {
+           updateTeamDisplay();
+           document.getElementById('team-name-input').addEventListener('keypress', (e) => {
+               if (e.key === 'Enter') {
+                   e.preventDefault();
+                   document.getElementById('add-team-btn').click();
+               }
+           });
+
+           document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+               if (e.target.id === 'modal-backdrop') {
+                   closeModal();
+               }
+           });
+       });
+   </script>
+
+</body>
+</html>
