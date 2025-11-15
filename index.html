@@ -179,8 +179,7 @@
            </div>
 
            <div id="team-list" class="space-y-2 mt-4 max-h-48 overflow-y-auto p-3 rounded-lg border border-gray-200 bg-gray-50">
-               
-           </div>
+               </div>
 
            <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-200">
                <p class="text-sm text-text-muted">ژمارا تیمان:</p>
@@ -368,7 +367,8 @@
 
            if (!isGameStarted) {
                startBtn.disabled = teams.length < 2;
-               startBtn.textContent = teams.length < 2 ? 'ب کێمی دوو تیمان داخل بکە';
+               // Fixed text assignment for disabled state
+               startBtn.textContent = teams.length < 2 ? 'ب کێمی دوو تیمان داخل بکە' : 'دەستپێبکە';
            }
            
            if (isGameStarted) {
@@ -391,10 +391,14 @@
            } else {
                teams.forEach((team, index) => {
                    const teamDiv = document.createElement('div');
-                   teamDiv.className = 'flex justify-between items-center p-2 rounded-md transition bg-gray-50 hover:bg-slate-700';
+                   // Use bg-panel-bg (which is darker) for list items when not hovered
+                   teamDiv.className = 'flex justify-between items-center p-2 rounded-md transition bg-panel-bg hover:bg-slate-700'; 
+                   
+                   const deleteButtonDisabled = isGameStarted; // Disable delete if game started
+
                    teamDiv.innerHTML = `
                        <span class="font-medium text-text-color truncate">${team.name}</span>
-                       <button onclick="removeTeam(${index})" class="delete-btn p-1 rounded-full bg-transparent" aria-label="ژێبرنق ${team.name}">
+                       <button onclick="removeTeam(${index})" class="delete-btn p-1 rounded-full bg-transparent" aria-label="ژێبرنق ${team.name}" ${deleteButtonDisabled ? 'disabled' : ''}>
                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                            </svg>
@@ -453,6 +457,7 @@
        function renderRoundHistory() {
            const historyContainer = document.getElementById('round-history-content');
            
+           // We slice from 1 to skip the initial state (round 0)
            const rounds = scoreHistory.slice(1);
            historyContainer.innerHTML = '';
 
@@ -465,6 +470,7 @@
            document.getElementById('round-history-panel').classList.remove('hidden');
 
            rounds.reverse().forEach((round, index) => {
+               // Calculate the actual index in scoreHistory array (since we reversed the display)
                const actualIndex = scoreHistory.length - 1 - index;
 
                const winner = round.roundScores.find(s => s.score === 0);
@@ -514,12 +520,13 @@
            
            teams.push({ name: name, score: 0 });
            input.value = '';
-           updateTeamDisplay();
+           updateTeamDisplay(); // FIXED: Call the function to render the new team
        }
 
        function removeTeam(index) {
            if (isGameStarted) {
-               showMessage('نی بکەڤە.');
+               // Changed message to be more explicit about why removal is blocked
+               showMessage('دەمێ یاریێ دا نکارێ ژێببەین.', 'ژبوو گوهۆرینێ یاریێ **نوی بکەڤە**.');
                return;
            }
            teams.splice(index, 1);
@@ -536,6 +543,7 @@
            document.getElementById('setup-panel').classList.add('hidden');
            document.getElementById('scoreboard-panel').classList.remove('hidden');
 
+           // Initialize score history with a starting state (round 0)
            scoreHistory = [{
                roundId: 0,
                totalScores: teams.map(t => ({ name: t.name, score: 0 })),
@@ -604,6 +612,7 @@
                 return;
            }
 
+           // Ensure we are working with the current state's total scores
            const previousTotalState = scoreHistory[historyIndex].totalScores;
 
            let newTotalScores = previousTotalState.map(team => {
@@ -614,11 +623,12 @@
                };
            });
            
+           // If we are not at the end of history, discard 'redo' states
            if (historyIndex < scoreHistory.length - 1) {
                scoreHistory = scoreHistory.slice(0, historyIndex + 1);
            }
 
-           const newRoundId = scoreHistory.length;
+           const newRoundId = scoreHistory.length; // New round ID is just the length of the array after slicing
            scoreHistory.push({
                roundId: newRoundId,
                totalScores: newTotalScores,
@@ -628,6 +638,7 @@
 
            renderAll();
            
+           // Clear input fields
            teams.forEach(team => {
                document.getElementById(`round-score-${team.name.replace(/\s/g, '-')}`).value = '';
            });
@@ -638,7 +649,7 @@
            if (historyIndex > 0) {
                historyIndex--;
                renderAll();
-               showMessage('خال هاتنە ژێبرن ژ دەستێ  ${historyIndex.toString()}.`); // Changed to toString()
+               showMessage(`زڤرینەڤە بو دەستێ  ${historyIndex.toString()}.`); // Changed to toString()
            }
        }
 
@@ -647,7 +658,7 @@
            if (historyIndex < scoreHistory.length - 1) {
                historyIndex++;
                renderAll();
-               showMessage('خال هاتنەڤ زڤراندن بو دەستێ  ${historyIndex.toString()}.`); // Changed to toString()
+               showMessage(`خال هاتنەڤ زڤراندن بو دەستێ  ${historyIndex.toString()}.`); // Changed to toString()
            }
        }
        
@@ -665,34 +676,41 @@
        function deleteRound(index) {
            if (index <= 0 || index >= scoreHistory.length) return;
 
-           const deletedRound = scoreHistory.splice(index, 1)[0];
+           const deletedRoundId = scoreHistory[index].roundId;
+           scoreHistory.splice(index, 1);
 
+           // Re-calculate all totals after the deleted index and re-assign roundIds
            let newHistory = [scoreHistory[0]];
-
+           
            for (let i = 1; i < scoreHistory.length; i++) {
                const roundEntry = scoreHistory[i];
                const previousTotalState = newHistory[newHistory.length - 1].totalScores;
 
                let newTotalScores = previousTotalState.map(team => {
                    const roundScore = roundEntry.roundScores.find(rs => rs.name === team.name);
+                   const currentTotal = previousTotalState.find(ts => ts.name === team.name).score;
+                   
+                   // Find the score from the previous total state in the new history and add the round's score
+                   const prevTotal = newHistory[newHistory.length - 1].totalScores.find(t => t.name === team.name).score;
+                   
                    return {
                        name: team.name,
-                       score: team.score + (roundScore ? roundScore.score : 0)
+                       score: prevTotal + (roundScore ? roundScore.score : 0)
                    };
                });
                
                newHistory.push({
-                   roundId: i,
+                   roundId: i, // Re-index the roundId
                    totalScores: newTotalScores,
                    roundScores: roundEntry.roundScores
                });
            }
-
+           
            scoreHistory = newHistory;
-           historyIndex = scoreHistory.length - 1;
+           historyIndex = scoreHistory.length - 1; // Go to the very end of the recalculated history
 
            renderAll();
-           showMessage('دەست هاتە ژێبرن، دەستێ  ${deletedRound.roundId.toString()} هاتە ژێبرن و خال دووبارە هاتنە هژمارتن.`); // Changed to toString()
+           showMessage(`دەست ${deletedRoundId.toString()} هاتە ژێبرن، خال دووبارە هاتنە هژمارتن.`); // Changed to toString()
        }
 
        // --- Analysis Function ---
@@ -705,6 +723,7 @@
                return '<p class="text-center text-text-muted">ب کێمی دوو تیم د پێدڤی نە.</p>';
            }
 
+           // Sort by score (lowest first) to find the leader
            const sortedTeams = [...currentTotalState].sort((a, b) => a.score - b.score);
            
            let html = `<ul class="divide-y ${'divide-gray-700'}">`;
@@ -764,7 +783,7 @@
 
        // Initialize application on load
        document.addEventListener('DOMContentLoaded', () => {
-           updateTeamDisplay();
+           updateTeamDisplay(); // FIXED: Initial call to display team count and enable/disable start button
            document.getElementById('team-name-input').addEventListener('keypress', (e) => {
                if (e.key === 'Enter') {
                    e.preventDefault();
